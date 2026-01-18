@@ -1,21 +1,63 @@
-create database ex03;
-use ex03;
 
-create table orders (
-    id int auto_increment primary key,
-    customer_id int not null,
-    order_date date,
-    total_amount decimal(12,2) default 0
+create table post_history (
+    history_id int auto_increment primary key,
+    post_id int,
+    old_content text,
+    new_content text,
+    changed_at datetime,
+    changed_by_user_id int,
+    constraint fk_post_history_posts
+        foreign key (post_id)
+        references posts(post_id)
+        on delete cascade
 );
 
-insert into orders (customer_id, order_date, total_amount) values
-(1, '2025-01-01', 1500000),
-(2, '2025-01-02', 2500000),
-(3, '2025-01-03', 1800000),
-(4, '2025-01-04', 4200000),
-(5, '2025-01-05', 900000);
+delimiter $$
 
-select *
-from orders
-where total_amount > (select avg(total_amount) from orders);
+create trigger tg_before_update_posts
+before update on posts
+for each row
+begin
+    if old.content <> new.content then
+        insert into post_history (
+            post_id,
+            old_content,
+            new_content,
+            changed_at,
+            changed_by_user_id
+        ) values (
+            old.post_id,
+            old.content,
+            new.content,
+            now(),
+            old.user_id
+        );
+    end if;
+end$$
 
+delimiter ;
+
+update posts
+set content = 'Hello world from Alice (edited)'
+where post_id = 1;
+
+update posts
+set content = 'Bob first post (updated version)'
+where post_id = 3;
+
+select * from post_history;
+
+insert into likes (user_id, post_id)
+values (3, 1);
+
+select post_id, like_count from posts where post_id = 1;
+
+update posts
+set like_count = like_count
+where post_id = 1;
+
+select * from post_history where post_id = 1;
+
+select post_id, user_id, like_count, content from posts;
+
+select * from user_statistics;

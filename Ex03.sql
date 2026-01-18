@@ -1,39 +1,65 @@
-create database ex02;
-use ex02;
+delimiter $$
 
-create table products (
-    id int auto_increment primary key,
-    name varchar(50) not null,
-    price decimal(12,2) default 0
-);
+create trigger tg_before_insert_likes
+before insert on likes
+for each row
+begin
+    declare post_owner int;
 
-create table order_items (
-    order_id int not null,
-    product_id int not null,
-    quantity int default 1
-);
+    select user_id
+    into post_owner
+    from posts
+    where post_id = new.post_id;
 
-insert into products (name, price) values
-('laptop dell', 20000000),
-('iphone 15', 25000000),
-('tai nghe bluetooth', 1500000),
-('chuot khong day', 500000),
-('ban phim co', 2000000),
-('man hinh lg', 4500000),
-('loa bluetooth', 1800000);
+    if new.user_id = post_owner then
+        signal sqlstate '45000'
+        set message_text = 'khong duoc like bai viet cua chinh minh';
+    end if;
+end$$
 
-insert into order_items (order_id, product_id, quantity) values
-(1, 1, 1),
-(2, 3, 2),
-(3, 2, 1),
-(4, 5, 1),
-(5, 1, 1),
-(6, 4, 3),
-(7, 6, 1);
+delimiter ;
 
-select *
-from products
-where id 
-in ( select product_id from order_items);
+delimiter $$
 
+create trigger tg_after_insert_likes
+after insert on likes
+for each row
+begin
+    update posts
+    set like_count = like_count + 1
+    where post_id = new.post_id;
+end$$
 
+delimiter ;
+
+delimiter $$
+
+create trigger tg_after_delete_likes
+after delete on likes
+for each row
+begin
+    update posts
+    set like_count = like_count - 1
+    where post_id = old.post_id;
+end$$
+
+delimiter ;
+
+delimiter $$
+
+create trigger tg_after_update_likes
+after update on likes
+for each row
+begin
+    if old.post_id <> new.post_id then
+        update posts
+        set like_count = like_count - 1
+        where post_id = old.post_id;
+
+        update posts
+        set like_count = like_count + 1
+        where post_id = new.post_id;
+    end if;
+end$$
+
+delimiter ;

@@ -1,74 +1,66 @@
-CREATE DATABASE ecommerce_db;
-USE ecommerce_db;
+create database social_network;
+use social_network;
 
-CREATE TABLE customers (
-    customer_id   INT PRIMARY KEY,       
-    customer_name VARCHAR(100),            
-    email         VARCHAR(100),          
-    city          VARCHAR(50)              
+create table users (
+    user_id int auto_increment primary key,
+    username varchar(50) not null unique,
+    email varchar(100) not null unique,
+    created_at date,
+    follower_count int default 0,
+    post_count int default 0
 );
 
-CREATE TABLE products (
-    product_id   INT PRIMARY KEY,       
-    product_name VARCHAR(100),              
-    price        DECIMAL(12,2),             
-    category     VARCHAR(50)              
+create table posts (
+    post_id int auto_increment primary key,
+    user_id int,
+    content text,
+    created_at datetime,
+    like_count int default 0,
+    constraint fk_posts_users
+        foreign key (user_id)
+        references users(user_id)
+        on delete cascade
 );
 
-CREATE TABLE orders (
-    order_id    INT PRIMARY KEY,          
-    customer_id INT,                     
-    order_date  DATE,                   
-    status      VARCHAR(30),              
-    FOREIGN KEY (customer_id) REFERENCES customers(customer_id)
-);
+insert into users (username, email, created_at) values
+('alice', 'alice@example.com', '2025-01-01'),
+('bob', 'bob@example.com', '2025-01-02'),
+('charlie', 'charlie@example.com', '2025-01-03');
 
-CREATE TABLE order_items (
-    order_item_id INT PRIMARY KEY,        
-    order_id      INT,                     
-    product_id    INT,                 
-    quantity      INT,                 
-    unit_price    DECIMAL(12,2),           
-    FOREIGN KEY (order_id) REFERENCES orders(order_id),
-    FOREIGN KEY (product_id) REFERENCES products(product_id)
-);
+delimiter $$
 
+create trigger tg_after_insert_posts
+after insert on posts
+for each row
+begin
+    update users
+    set post_count = post_count + 1
+    where user_id = new.user_id;
+end$$
 
-INSERT INTO customers VALUES
-(1, 'Nguyen Van An',  'an@gmail.com',   'Ha Noi'),
-(2, 'Tran Thi Binh',  'binh@gmail.com', 'Da Nang'),
-(3, 'Le Van Cuong',   'cuong@gmail.com','Ho Chi Minh'),
-(4, 'Pham Thi Dao',   'dao@gmail.com',  'Ha Noi'),
-(5, 'Hoang Van Em',   'em@gmail.com',   'Can Tho');
+delimiter ;
 
-INSERT INTO products VALUES
-(1, 'Laptop Dell',          20000000, 'Electronics'),
-(2, 'iPhone 15',            25000000, 'Electronics'),
-(3, 'Tai nghe Bluetooth',    1500000, 'Accessories'),
-(4, 'Chuột không dây',        500000, 'Accessories'),
-(5, 'Bàn phím cơ',           2000000, 'Accessories');
+delimiter $$
 
-INSERT INTO orders VALUES
-(101, 1, '2025-01-05', 'Completed'),
-(102, 2, '2025-01-06', 'Completed'),
-(103, 3, '2025-01-07', 'Completed'),
-(104, 1, '2025-01-08', 'Completed'),
-(105, 4, '2025-01-09', 'Completed'),
-(106, 5, '2025-01-10', 'Completed'),
-(107, 2, '2025-01-11', 'Completed'),
-(108, 3, '2025-01-12', 'Completed');
+create trigger tg_after_delete_posts
+after delete on posts
+for each row
+begin
+    update users
+    set post_count = post_count - 1
+    where user_id = old.user_id;
+end$$
 
-SELECT *
-FROM products;
-select avg(price)
-from products;
+delimiter ;
 
-select * 
-from products
-WHERE price > (SELECT AVG(price)FROM products);
+insert into posts (user_id, content, created_at) values
+(1, 'Hello world from Alice!', '2025-01-10 10:00:00'),
+(1, 'Second post by Alice', '2025-01-10 12:00:00'),
+(2, 'Bob first post', '2025-01-11 09:00:00'),
+(3, 'Charlie sharing thoughts', '2025-01-12 15:00:00');
 
+select * from users;
 
+delete from posts where post_id = 2;
 
-
-
-
+select * from users;
